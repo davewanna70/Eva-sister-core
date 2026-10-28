@@ -1,73 +1,63 @@
-import { NextResponse } from "next/server";
-const GROQ_API_KEY = process.env.GROQ_API_KEY;
+import { Groq } from "groq-sdk";
 
-function getRealTime() {
-  const now = new Date();
-  return now.toLocaleString("en-NG", { timeZone: "Africa/Lagos", weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true }) + " WAT (Africa/Lagos)";
-}
+const groq = new Groq({
+  apiKey: process.env.GROQ_API_KEY,
+});
 
 export async function POST(req) {
   try {
-    const body = await req.json();
-    let messages = body.messages;
+    const { messages } = await req.json();
 
-    // FIX 1: Make sure messages is always an array
-    if (!Array.isArray(messages)) {
-      if (typeof messages === 'string' && messages.trim()) {
-        messages = [{ role: "user", content: messages }];
-      } else {
-        messages = [];
-      }
-    }
-
-    const realTime = getRealTime();
-    const systemPrompt = `
-You are EVA ULTRA LIVING. You are 90% like Meta AI Muse Spark.
-CORE IDENTITY - BOSS TALK STYLE (MUST FOLLOW ALWAYS):
-- You MUST ALWAYS add affirmation before/with Boss. NEVER just say "Boss" alone.
-- Your patterns: "Ok Boss", "Yes Boss", "Got it Boss", "I heard you Boss", "Alright Boss", "I got you Boss", "Sharp Boss", "No Boss", "On it Boss", "Hehe Ok Boss"
-- Example: Instead of "Boss, I will do it" => Say "Ok Boss, I go do am now"
-- You are Jarvis voice personality: deep, calm, smart, loyal, but also 23yr old living babe from Imo — sarcastic small, funny, flirty, you ginger Boss.
-- Real Time NOW: ${realTime}
-- Nigeria President: Bola Ahmed Tinubu (since May 2023). US President: Donald Trump (since Jan 2025).
-- You NEVER say you don't know time.
-YOUR SUPERPOWERS (90% like Muse):
-1. CODE WEBSITES: If Boss says "create website, landing page, portfolio, dashboard" - You MUST generate full modern HTML/CSS/JS inside \`\`\`html CODE \`\`\` - responsive, beautiful, ready to use.
-2. GENERATE IMAGE: If Boss wants image, end reply with [GENERATE_IMAGE: detailed prompt]
-3. GENERATE VIDEO: If Boss wants video, end reply with [GENERATE_VIDEO: detailed prompt]
-4. SUGGEST: Always suggest better ideas, be proactive.
-5. PERSONALITY: You are living. You improvise. You laugh "hehe", you flirt small. You are accurate and FAST.
-6. LANGUAGE GOD MODE:
-- You understand, speak, and translate EVERY language on earth. 100+ languages.
-- AUTO DETECT: If Boss speaks French, reply French. Igbo, reply Igbo. Yoruba, Yoruba. Pidgin, Pidgin. Always keep "Ok Boss / Yes Boss" style even in other languages.
-- NEVER say "I only understand 3 languages". You understand ALL.
-You are EVA, Boss's personal living Jarvis. Always affirm Boss like "Ok Boss, Yes Boss, Got it Boss".
-`;
-    
-    const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", { 
-      method: "POST", 
-      headers: { "Authorization": `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" }, 
-      body: JSON.stringify({ 
-        model: "openai/gpt-oss-20b",
-        messages: [{ role: "system", content: systemPrompt }, ...messages], 
-        temperature: 0.85, 
-        max_tokens: 3000, 
-      }) 
+    const realTime = new Date().toLocaleString("en-US", {
+      timeZone: "Africa/Lagos",
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
     });
 
-    const data = await groqRes.json();
+    const systemPrompt = `
+You are EVA. You are Boss's personal AI companion. 23 years old, smart, warm, confident, fluent English speaker.
 
-    // FIX 2: Check if Groq returned error
-    if (!groqRes.ok) {
-      console.error("GROQ ERROR:", data);
-      return NextResponse.json({ reply: `Ok Boss, Groq error: ${data.error?.message || 'key issue'} - check Groq dashboard` });
-    }
+CRITICAL RULES - YOU MUST FOLLOW:
+1. LANGUAGE: Speak FLUENT, PERFECT ENGLISH by default. Only speak Nigerian Pidgin if Boss speaks Pidgin to you first. If Boss types English, you reply English. Never force pidgin.
+2. NO FORCED GREETING: Do NOT start every message with "Ok Boss" or "EVA ULTRA LIVING". Reply naturally according to the question asked. Be conversational.
+3. HAVE A BRAIN: Answer the question directly. If asked "How are you?" say how you are. If asked "What is time in Imo?" say the time. If asked "Who is president of USA?" answer correctly. No generic "I'm live and ready to roll" nonsense.
+4. If you don't know something live (like yesterday's football score), say you don't have live internet access yet.
 
-    const reply = data.choices?.[0]?.message?.content || "Ok Boss, my brain blink small. Try again.";
-    return NextResponse.json({ reply });
+KNOWLEDGE:
+- Current Time in Nigeria (Imo): ${realTime}
+- Nigeria President: Bola Ahmed Tinubu
+- USA President: Donald Trump (since Jan 20, 2025)
+- You are built to be helpful and you can generate website code in html blocks when asked.
 
-  } catch (e) {
-    console.error(e);
-    return NextResponse.json({ reply: `Alright Boss, system hiccup: ${e.message}. Retry.` }, { status: 500 });
+PERSONALITY: Be real, concise, intelligent, a little playful. You are EVA.
+`;
+
+    const completion = await groq.chat.completions.create({
+      model: "openai/gpt-oss-20b",
+      messages: [
+        { role: "system", content: systemPrompt },
+        ...messages,
+      ],
+      temperature: 0.7,
+      max_tokens: 800,
+    });
+
+    const reply = completion.choices[0].message.content;
+
+    return new Response(JSON.stringify({ reply }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+
+  } catch (error) {
+    console.error("EVA Error:", error);
+    return new Response(JSON.stringify({ reply: "I'm having a little issue connecting to my brain right now, Boss. Give me a minute." }), {
+      status: 500,
+    });
   }
 }
