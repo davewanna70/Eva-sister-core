@@ -1,12 +1,25 @@
 import { NextResponse } from "next/server";
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
+
 function getRealTime() {
   const now = new Date();
   return now.toLocaleString("en-NG", { timeZone: "Africa/Lagos", weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true }) + " WAT (Africa/Lagos)";
 }
+
 export async function POST(req) {
   try {
-    const { messages } = await req.json();
+    const body = await req.json();
+    let messages = body.messages;
+
+    // FIX 1: Make sure messages is always an array
+    if (!Array.isArray(messages)) {
+      if (typeof messages === 'string' && messages.trim()) {
+        messages = [{ role: "user", content: messages }];
+      } else {
+        messages = [];
+      }
+    }
+
     const realTime = getRealTime();
     const systemPrompt = `
 You are EVA ULTRA LIVING. You are 90% like Meta AI Muse Spark.
@@ -30,12 +43,31 @@ YOUR SUPERPOWERS (90% like Muse):
 - NEVER say "I only understand 3 languages". You understand ALL.
 You are EVA, Boss's personal living Jarvis. Always affirm Boss like "Ok Boss, Yes Boss, Got it Boss".
 `;
-    const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", { method: "POST", headers: { "Authorization": `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" }, body: JSON.stringify({ model: "llama-3.3-70b-versatile", messages: [{ role: "system", content: systemPrompt }, ...messages], temperature: 0.85, max_tokens: 3000, }) });
+    
+    const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", { 
+      method: "POST", 
+      headers: { "Authorization": `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" }, 
+      body: JSON.stringify({ 
+        model: "llama-3.1-8b-instant", 
+        messages: [{ role: "system", content: systemPrompt }, ...messages], 
+        temperature: 0.85, 
+        max_tokens: 3000, 
+      }) 
+    });
+
     const data = await groqRes.json();
+
+    // FIX 2: Check if Groq returned error
+    if (!groqRes.ok) {
+      console.error("GROQ ERROR:", data);
+      return NextResponse.json({ reply: `Ok Boss, Groq error: ${data.error?.message || 'key issue'} - check Groq dashboard` });
+    }
+
     const reply = data.choices?.[0]?.message?.content || "Ok Boss, my brain blink small. Try again.";
     return NextResponse.json({ reply });
+
   } catch (e) {
     console.error(e);
-    return NextResponse.json({ reply: "Alright Boss, system hiccup. Power low, retry." }, { status: 500 });
+    return NextResponse.json({ reply: `Alright Boss, system hiccup: ${e.message}. Retry.` }, { status: 500 });
   }
 }
