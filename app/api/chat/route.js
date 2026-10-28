@@ -48,7 +48,7 @@ You are EVA, Boss's personal living Jarvis. Always affirm Boss like "Ok Boss, Ye
       method: "POST", 
       headers: { "Authorization": `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" }, 
       body: JSON.stringify({ 
-        model: "llama3-8b-8192",
+        model: "openai/gpt-oss-20b",
         messages: [{ role: "system", content: systemPrompt }, ...messages], 
         temperature: 0.85, 
         max_tokens: 3000, 
