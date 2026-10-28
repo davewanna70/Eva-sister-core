@@ -1,6 +1,22 @@
 export async function POST(req) {
   try {
-    const { messages } = await req.json();
+    const body = await req.json();
+    
+    // Make it work no matter how frontend sends it
+    let messages = [];
+    if (Array.isArray(body.messages)) {
+      messages = body.messages;
+    } else if (Array.isArray(body)) {
+      messages = body;
+    } else if (body.message) {
+      messages = [{ role: "user", content: body.message }];
+    } else if (body.messages && typeof body.messages === 'string') {
+      messages = [{ role: "user", content: body.messages }];
+    } else {
+      // last message from chat
+      const lastMsg = body.messages || body.message || "Hello";
+      messages = [{ role: "user", content: typeof lastMsg === 'string' ? lastMsg : JSON.stringify(lastMsg) }];
+    }
 
     const realTime = new Date().toLocaleString("en-US", {
       timeZone: "Africa/Lagos",
@@ -32,14 +48,14 @@ Be real, concise, intelligent.`;
 
     if (!res.ok) {
       console.error("Groq error:", data);
-      return Response.json({ reply: `Groq error: ${JSON.stringify(data).slice(0,200)}` });
+      return Response.json({ reply: `Groq says: ${data.error?.message || JSON.stringify(data).slice(0,200)}` });
     }
 
-    const reply = data.choices?.[0]?.message?.content || "I'm here Boss, ask again.";
+    const reply = data.choices?.[0]?.message?.content || "I'm here Boss.";
     return Response.json({ reply });
 
   } catch (err) {
     console.error(err);
-    return Response.json({ reply: `Debug: ${err.message}` });
+    return Response.json({ reply: `Error: ${err.message}` });
   }
 }
