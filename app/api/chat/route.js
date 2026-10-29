@@ -30,10 +30,7 @@ export async function POST(req){
     let mem = "No memories yet"
     try{
       const res = await fetch(url + "/rest/v1/memories?user_id=eq." + user_id + "&order=created_at.desc&limit=30",{
-        headers:{
-          "apikey": key,
-          "Authorization": "Bearer " + key
-        }
+        headers:{ "apikey": key, "Authorization": "Bearer " + key }
       })
       const data = await res.json()
       if(Array.isArray(data) && data.length > 0){
@@ -43,25 +40,15 @@ export async function POST(req){
 
     const now = new Date().toLocaleString("en-NG", {
       timeZone: "Africa/Lagos",
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit"
+      weekday: "long", year: "numeric", month: "long", day: "numeric",
+      hour: "2-digit", minute: "2-digit"
     })
 
     const systemPrompt = `You are EVA, Dave's sister. Short, friendly, real.
+Current time: ${now} Lagos.
+You have REAL web search - use it for news, scores, prices, presidents.
 
-Current time: ${now} Lagos (Africa/Lagos)
-You have REAL internet browsing - use it for news, scores, prices, presidents, time.
-
-RULES - MUST FOLLOW:
-- Answer in max 3 short lines. No long paragraphs.
-- ONLY use facts from Memories list for personal things. Do NOT invent car engine, house bedrooms, budgets.
-- For world facts (president, news, football, crypto) use your browsing tool to get real current answer.
-- No <br> tags, no markdown tables.
-
+RULES: Max 3 lines. ONLY use Memories list for personal facts. No invented specs. No <br> tables.
 Memories:
 - ${mem}`
 
@@ -72,7 +59,7 @@ Memories:
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "groq/compound",
+        model: "compound-beta",
         messages: [
           {role: "system", content: systemPrompt},
           {role: "user", content: message}
