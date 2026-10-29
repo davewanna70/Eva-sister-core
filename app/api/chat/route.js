@@ -1,4 +1,4 @@
-export async function POST(req: any){
+export async function POST(req){
   try {
     const {message,userId}=await req.json()
     const user_id=userId||"dave"
@@ -8,7 +8,6 @@ export async function POST(req: any){
 
     if(!url || !key) return Response.json({reply:"Setup error: Supabase keys missing"}, {status:500})
 
-    // 1. Save memory (don't crash if it fails)
     if(message && message.length>2){
       try {
         await fetch(`${url}/rest/v1/memories`,{
@@ -19,7 +18,6 @@ export async function POST(req: any){
       } catch(e){ console.log("Memory save failed", e) }
     }
 
-    // 2. Get last 30 memories
     let mem = "No memories yet"
     try {
       const res=await fetch(`${url}/rest/v1/memories?user_id=eq.${user_id}&order=created_at.desc&limit=30`,{
@@ -27,11 +25,10 @@ export async function POST(req: any){
       })
       const data=await res.json()
       if(Array.isArray(data) && data.length){
-        mem = data.map((d:any)=>d.content).reverse().join("\n- ")
+        mem = data.map((d)=>d.content).reverse().join("\n- ")
       }
     } catch(e){ console.log("Memory fetch failed", e) }
 
-    // 3. Ask Groq - USE NEW MODEL
     const r=await fetch("https://api.groq.com/openai/v1/chat/completions",{
       method:"POST",
       headers:{"Authorization":`Bearer ${groqKey}`,"Content-Type":"application/json"},
@@ -51,7 +48,7 @@ export async function POST(req: any){
     }
 
     return Response.json({reply:j.choices[0].message.content})
-  } catch(err:any){
+  } catch(err){
     console.log("EVA CRASH:", err)
     return Response.json({reply:`Eva crash log: ${err.message}`}, {status:200})
   }
