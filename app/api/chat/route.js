@@ -41,6 +41,30 @@ export async function POST(req){
       }
     }catch(e){}
 
+    const now = new Date().toLocaleString("en-NG", {
+      timeZone: "Africa/Lagos",
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit"
+    })
+
+    const systemPrompt = `You are EVA, Dave's sister. Short, friendly, real.
+
+Current time: ${now} Lagos (Africa/Lagos)
+You have REAL internet browsing - use it for news, scores, prices, presidents, time.
+
+RULES - MUST FOLLOW:
+- Answer in max 3 short lines. No long paragraphs.
+- ONLY use facts from Memories list for personal things. Do NOT invent car engine, house bedrooms, budgets.
+- For world facts (president, news, football, crypto) use your browsing tool to get real current answer.
+- No <br> tags, no markdown tables.
+
+Memories:
+- ${mem}`
+
     const r = await fetch("https://api.groq.com/openai/v1/chat/completions",{
       method:"POST",
       headers:{
@@ -48,11 +72,12 @@ export async function POST(req){
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "openai/gpt-oss-20b",
+        model: "groq/compound",
         messages: [
-          {role: "system", content: "You are EVA, Dave's sister with FOREVER MEMORY. You remember EVERYTHING forever.\nMemories:\n- " + mem},
+          {role: "system", content: systemPrompt},
           {role: "user", content: message}
-        ]
+        ],
+        temperature: 0.2
       })
     })
 
