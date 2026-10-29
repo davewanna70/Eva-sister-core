@@ -33,7 +33,7 @@ export async function POST(req){
       method:"POST",
       headers:{"Authorization":`Bearer ${groqKey}`,"Content-Type":"application/json"},
       body:JSON.stringify({
-        model:"llama-3.1-8b-instant",
+        model:"openai/gpt-oss-20b"
         messages:[
           {role:"system",content:`You are EVA, Dave's sister with FOREVER MEMORY. You remember EVERYTHING forever.\nMemories:\n- ${mem}\nRules: Never forget anything above. If Dave mentions that car, that food, that name, recall full details from memories. List all facts when asked what you remember.`},
           {role:"user",content:message}
