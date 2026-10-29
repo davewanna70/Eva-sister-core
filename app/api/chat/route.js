@@ -1,55 +1,67 @@
 export async function POST(req){
-  try {
-    const {message,userId}=await req.json()
-    const user_id=userId||"dave"
-    const url=process.env.NEXT_PUBLIC_SUPABASE_URL
-    const key=process.env.SUPABASE_SERVICE_ROLE_KEY
-    const groqKey=process.env.GROQ_API_KEY || process.env.GROQ_API_KEY_2
+  try{
+    const body = await req.json()
+    const message = body.message
+    const userId = body.userId
+    const user_id = userId || "dave"
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+    const groqKey = process.env.GROQ_API_KEY
 
-    if(!url || !key) return Response.json({reply:"Setup error: Supabase keys missing"}, {status:500})
+    if(!url || !key){
+      return Response.json({reply:"Setup error: Supabase keys missing"})
+    }
 
-    if(message && message.length>2){
-      try {
-        await fetch(`${url}/rest/v1/memories`,{
+    if(message && message.length > 2){
+      try{
+        await fetch(url + "/rest/v1/memories",{
           method:"POST",
-          headers:{"apikey":key,"Authorization":`Bearer ${key}`,"Content-Type":"application/json","Prefer":"return=minimal"},
-          body:JSON.stringify({user_id,content:message})
+          headers:{
+            "apikey": key,
+            "Authorization": "Bearer " + key,
+            "Content-Type": "application/json",
+            "Prefer": "return=minimal"
+          },
+          body: JSON.stringify({user_id: user_id, content: message})
         })
-      } catch(e){ console.log("Memory save failed", e) }
+      }catch(e){}
     }
 
     let mem = "No memories yet"
-    try {
-      const res=await fetch(`${url}/rest/v1/memories?user_id=eq.${user_id}&order=created_at.desc&limit=30`,{
-        headers:{"apikey":key,"Authorization":`Bearer ${key}`}
+    try{
+      const res = await fetch(url + "/rest/v1/memories?user_id=eq." + user_id + "&order=created_at.desc&limit=30",{
+        headers:{
+          "apikey": key,
+          "Authorization": "Bearer " + key
+        }
       })
-      const data=await res.json()
-      if(Array.isArray(data) && data.length){
-        mem = data.map((d)=>d.content).reverse().join("\n- ")
+      const data = await res.json()
+      if(Array.isArray(data) && data.length > 0){
+        mem = data.map(function(d){return d.content}).reverse().join("\n- ")
       }
-    } catch(e){ console.log("Memory fetch failed", e) }
+    }catch(e){}
 
-    const r=await fetch("https://api.groq.com/openai/v1/chat/completions",{
+    const r = await fetch("https://api.groq.com/openai/v1/chat/completions",{
       method:"POST",
-      headers:{"Authorization":`Bearer ${groqKey}`,"Content-Type":"application/json"},
-      body:JSON.stringify({
-        model:"openai/gpt-oss-20b"
-        messages:[
-          {role:"system",content:`You are EVA, Dave's sister with FOREVER MEMORY. You remember EVERYTHING forever.\nMemories:\n- ${mem}\nRules: Never forget anything above. If Dave mentions that car, that food, that name, recall full details from memories. List all facts when asked what you remember.`},
-          {role:"user",content:message}
+      headers:{
+        "Authorization": "Bearer " + groqKey,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: "openai/gpt-oss-20b",
+        messages: [
+          {role: "system", content: "You are EVA, Dave's sister with FOREVER MEMORY. You remember EVERYTHING forever.\nMemories:\n- " + mem},
+          {role: "user", content: message}
         ]
       })
     })
-    const j=await r.json()
-    
-    if(!j.choices || !j.choices[0]){
-      console.log("Groq error:", j)
-      return Response.json({reply:`Groq error: ${JSON.stringify(j)}`})
-    }
 
-    return Response.json({reply:j.choices[0].message.content})
-  } catch(err){
-    console.log("EVA CRASH:", err)
-    return Response.json({reply:`Eva crash log: ${err.message}`}, {status:200})
+    const j = await r.json()
+    if(!j.choices || !j.choices[0]){
+      return Response.json({reply: "Groq error: " + JSON.stringify(j)})
+    }
+    return Response.json({reply: j.choices[0].message.content})
+  }catch(err){
+    return Response.json({reply: "Eva crash: " + err.message})
   }
 }
