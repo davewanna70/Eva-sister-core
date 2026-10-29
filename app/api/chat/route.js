@@ -1,24 +1,18 @@
 import { createClient } from '@supabase/supabase-js'
-import { NextRequest, NextResponse } from 'next/server'
 
 const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
 )
 
-export async function POST(req: NextRequest) {
+export async function POST(req) {
   const { message, userId } = await req.json()
   const user_id = userId || 'dave-main-user'
 
-  // 1. SAVE MEMORY IF USER SAYS "remember me" or "my name is"
   if (message.toLowerCase().includes('remember') || message.toLowerCase().includes('my name is')) {
-    await supabase.from('memories').insert({
-      user_id: user_id,
-      content: message,
-    })
+    await supabase.from('memories').insert({ user_id, content: message })
   }
 
-  // 2. GET OLD MEMORIES
   const { data: memories } = await supabase
     .from('memories')
     .select('content')
@@ -28,7 +22,6 @@ export async function POST(req: NextRequest) {
 
   const memoryContext = memories?.map(m => m.content).join('\n') || 'No memory yet'
 
-  // 3. CALL GROQ WITH MEMORY
   const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -38,7 +31,7 @@ export async function POST(req: NextRequest) {
     body: JSON.stringify({
       model: 'llama3-8b-8192',
       messages: [
-        { role: 'system', content: `You are EVA, personal AI sister. Remember forever: ${memoryContext}. Always answer from memory.` },
+        { role: 'system', content: `You are EVA, remember forever: ${memoryContext}` },
         { role: 'user', content: message }
       ]
     })
@@ -47,5 +40,5 @@ export async function POST(req: NextRequest) {
   const groqData = await groqRes.json()
   const reply = groqData.choices[0].message.content
 
-  return NextResponse.json({ reply })
+  return new Response(JSON.stringify({ reply }), { status: 200 })
 }
