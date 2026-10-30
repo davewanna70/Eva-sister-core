@@ -38,7 +38,7 @@ export async function POST(req){
         "Content-Type":"application/json"
       },
       body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
+        model: "openai/gpt-oss-20b",
         messages:[
           {role:"system", content: `You are Eva — friendly Nigerian AI. If web data is provided, use it for real-time answers. Be concise, helpful. ${webContext}`},
           {role:"user", content: message}
